@@ -1,0 +1,264 @@
+# http://nbviewer.ipython.org/github/fonnesbeck/Bios366/blob/master/notebooks/Section2_7-Plotting-with-Pandas.ipynb
+
+--
+import pandas as pd
+import numpy as np
+
+rand_df = pd.DataFrame(np.random.randn(5, 5), columns=list('abcde'))
+
+# http://pandas.pydata.org/pandas-docs/version/0.17.1/generated/pandas.date_range.html
+rand_df['timestamp_d'] = pd.date_range("2015-01-01", "2015-01-05", freq="1D")
+pd.date_range('2016-06-01', periods=10)
+pd.date_range("2015-01-01", "2015-01-05")
+
+np.random.normal(m, s, dim) 平均數, 標準差，大小(n, m)
+
+df = pd.DataFrame(np.random.normal(100, 20, (12,5)), index=pd.date_range('2016-01-01', '2016-12-31', freq='M'), columns=list('ABCDE'))
+
+df.plot()
+
+df = pd.read_csv('D:/IS12_20151116.csv', skiprows=1, na_values='NULL', index_col=0)
+df.columns = 'BILL_YM,SYSTEM,ARPU_RANK,BILL_CNT,ARPU_AMT'.split(',')
+# df.columns = [x.lower() for x in df.columns]
+
+# http://www.analyticsvidhya.com/blog/2016/01/12-pandas-techniques-python-data-manipulation/
+# filter values of a column based on conditions from another set of columns
+import pandas as pd
+import numpy as np
+df = pd.read_csv("train.csv", index_col="Loan_ID")
+
+df.loc[(df["Gender"]=="Female") & (df["Education"]=="Not Graduate") & (df["Loan_Status"]=="Y"), ["Gender","Education","Loan_Status"]]
+for i,row in df.loc[df['LoanAmount'].isnull(),:].iterrows():
+
+
+# merge
+prop_rates = pd.DataFrame([1000, 5000, 12000], index=['Rural','Semiurban','Urban'],columns=['rates'])
+data_merged = df.merge(right=prop_rates, how='inner',left_on='Property_Area',right_index=True, sort=False)
+data_merged.pivot_table(values='Credit_History',index=['Property_Area','rates'], aggfunc=len)
+
+
+# http://www.bilibili.com/video/av2858222/
+# series.map (Series->Series)
+df['SYSTEM_LOWER'] = df['SYSTEM'].map(str.upper)
+
+# DataFrame->DataFrame
+df = df.applymap(lambda x: float(x)*2 if x.isdigit() else x.upper())
+
+#apply (DataFrame->Series, 用 axis 控制)
+df['new_index'] = df.apply(lambda x: '_'.join([str(x['BILL_YM']), str(x['SYSTEM']), str(x['ARPU_RANK'])]), axis=1) #axis=1 defines that function is to be applied on each row
+
+#drop
+df = df.drop(['BILL_YM', 'SYSTEM', 'ARPU_RANK'], axis=1)
+
+# sorting
+# http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.sort_values.html#pandas.DataFrame.sort_values
+data_sorted = df.sort_values(['ApplicantIncome','CoapplicantIncome'], ascending=False)
+data_sorted[['ApplicantIncome','CoapplicantIncome']].head(10)
+
+#rank (method='average/min/max/first')
+
+
+#plot
+import matplotlib.pyplot as plt
+%matplotlib inline
+df.boxplot(column="ApplicantIncome",by="Loan_Status")
+plt.show()
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from pandas.tools.plotting import scatter_matrix
+
+df = pd.DataFrame(np.random.randn(10, 2), columns=['a', 'b'])
+plt.scatter(df['a'], df['b'])
+
+
+df = pd.DataFrame(np.random.randn(100, 4), columns=['a', 'b', 'c', 'd'])
+axes = scatter_matrix(df, alpha=0.5, diagonal='kde')
+corr = df.corr().as_matrix()
+for i, j in zip(*plt.np.triu_indices_from(axes, k=1)):
+    axes[i, j].annotate("%.3f" %corr[i,j], (0.8, 0.8), xycoords='axes fraction', ha='center', va='center')
+plt.show()
+
+
+#select
+df.loc[df['column_name'] == some_value]
+df.loc[df['column_name'].isin(some_values)]
+df.loc[~df['column_name'].isin(some_values)]
+df.loc[df['column_name'] != some_value]
+
+df.query('col == val')
+df.query('(a < b) & (b < c)')
+exclude = ('red', 'orange')
+df.query('color not in @exclude')
+
+
+
+df[::20] #每20筆抽一次
+df[ df['SYSTEM'].isnull() ][['BILL_YM','ARPU_AMT']].head(10)
+
+#fillna by median
+mdeian_val = df[(df['col1']==x) & (df['col2']==y)]['col3'].dropna().median()
+df.loc[ (df['col3'].isnull()) & (df['col1']==x) & (df['col2']==y), 'col3'] = mdeian_val
+
+#fillna by mode
+from scipy.stats import mode
+df['Gender'].fillna(mode(df['Gender']).mode[0], inplace=True)
+
+#Pivot Table
+impute_grps = data.pivot_table(values=["LoanAmount"], index=["Gender","Married","Self_Employed"], aggfunc=np.mean)
+print impute_grps
+
+
+# group by (split-apply-combine)
+# http://pandas.pydata.org/pandas-docs/stable/groupby.html
+
+# Aggregation: computing a summary statistic (or statistics) about each group. ex: Compute group sums or means; Compute group sizes / counts
+df[['BILL_YM', 'BILL_CNT']].groupby('BILL_YM').agg(lambda x : sum(x))
+
+# Transformation: perform some group-specific computations and return a like-indexed. ex: Standardizing data (zscore) within group; Filling NAs within groups with a value derived from each group
+df.groupby('col1').transform('mean') # group 的每個 element 值被取代為 mean
+# zscore
+df.groupby('col1').transform(lambda x: (x - x.mean()) / x.std())
+
+# Filtration: discard some groups, according to a group-wise computation that evaluates True or False. ex: Discarding data that belongs to groups with only a few members; Filtering out data based on the group sum or mean
+df.groupby('col1').filter(lambda x: x.sum() > 2)
+dff.groupby('col1').filter(lambda x: len(x) > 2)
+
+grouped = df.groupby(['BILL_YM', 'SYSTEM'])
+grouped.groups
+grouped.get_group((10411, '4G'))
+for name, group in grouped:
+  print name
+  print group
+
+grouped['BILL_CNT'].agg([np.sum, np.mean, np.std])
+
+
+np.random.choice(['A', 'B'], size=50)
+df.copy()
+
+
+#Binning:
+def binning(col, cut_points, labels=None):
+  #Define min and max values:
+  minval = col.min()
+  maxval = col.max()
+  #create list by adding min and max to cut_points
+  break_points = [minval] + cut_points + [maxval]
+  #if no labels provided, use default labels 0 ... (n-1)
+  if not labels:
+    labels = range(len(cut_points)+1)
+  #Binning using cut function of pandas
+  colBin = pd.cut(col,bins=break_points,labels=labels,include_lowest=True)
+  return colBin
+
+
+cut_points = [90,140,190]
+labels = ["low","medium","high","very high"]
+df["LoanAmount_Bin"] = binning(df["LoanAmount"], cut_points, labels)
+print pd.value_counts(df["LoanAmount_Bin"], sort=False)
+
+
+#Coding nominal data
+def coding(col, codeDict):
+  colCoded = pd.Series(col, copy=True)
+  for key, value in codeDict.items():
+    colCoded.replace(key, value, inplace=True)
+  return colCoded
+
+df["Loan_Status_Coded"] = coding(df["Loan_Status"], {'N':0,'Y':1})
+
+
+--
+
+import pandas as pd
+import numpy as np
+import MySQLdb
+from pandas.io import sql
+
+df = pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None)
+df.columns = ['col01', 'col01', 'col03']
+
+store = pd.HDFStore('myfile.h5', mode='w')
+for chunk in pd.read_csv('sample.txt', header=0, index_col=False, error_bad_lines=False, chunksize=100000):
+  store.append('df',chunk)
+store.close()
+
+store = pd.HDFStore('myfile.h5', mode='r')
+df = store['df']
+df2 = df[0].str.extract('(.{20})(.{20})(.{24})') #substring
+
+--
+import pandas as pd
+
+for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+  df[0] = df[0].map(lambda x: x.replace('+', '='))
+  del df[2]
+  df.to_csv('export.csv', sep='=', mode='a', header=False, index=False)
+
+for df in pd.read_fwf('sample100.txt.gz', widths=[20, 20, 24], header=None, compression='gzip', chunksize=10):
+  df[0] = df[0].map(lambda x: x.replace('+', '='))
+  del df[2]
+  df.to_csv('export.csv', sep='=', mode='a', header=False, index=False)
+
+import numpy as np  
+with open('export.txt', mode='w') as outF:
+  for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+    df[0] = df[0].map(lambda x: x.replace('+', '='))
+    del df[2]
+    np.savetxt(outF, df, fmt='%s'*len(df.columns))
+
+import gzip
+import numpy as np
+with gzip.GzipFile('export.txt.gz', mode='w', compresslevel=9) as outF: 
+  for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+    df[0] = df[0].map(lambda x: x.replace('+', '=')) 
+    del df[2] 
+    np.savetxt(outF, df, fmt='%s'*len(df.columns))
+
+import MySQLdb
+conn = MySQLdb.connect(host='localhost', user='testuser', passwd='testpasswd', db='test')
+conn.cursor().execute('drop table if exists sample100;')
+for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+  df[0] = df[0].map(lambda x: x.replace('+', '='))
+  del df[2]
+  df.columns = ['col01', 'col02']
+  df.to_sql(con=conn, name='sample100', if_exists='append', flavor='mysql')
+
+cur.execute('select count(*) from sample;')
+cur.fetchone()
+conn.cursor().execute('delete from sample;')
+df = sql.read_sql("SELECT * FROM sample;", conn)
+
+http://blog.csdn.net/overstack/article/details/9001849
+http://pandas.pydata.org/pandas-docs/stable/io.html
+
+import pandas as pd
+import numpy as np
+
+with open('export.csv', mode='w') as outF:
+  for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+    df[0] = df[0].map(lambda x: x.replace('+', '='))
+    del df[2]
+    df.to_csv(outF, sep='=', header=False, index=False)
+
+with open('export.txt', mode='w') as outF:
+  for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+    df[0] = df[0].map(lambda x: x.replace('+', '='))
+    del df[2]
+    np.savetxt(outF, df, fmt='%s%s')
+
+import gzip
+with gzip.GzipFile('export.txt.gz', mode='w', compresslevel=9) as outF:
+  for df in pd.read_fwf('sample100.txt', widths=[20, 20, 24], header=None, chunksize=10):
+    df[0] = df[0].map(lambda x: x.replace('+', '='))
+    del df[2]
+    np.savetxt(outF, df, fmt='%s%s')
+
+tmp = pd.read_fwf('sample.txt', widths=[20, 20, 24], header=None, iterator=True, chunksize=1000000)
+df = pd.concat([chunk for chunk in tmp], ignore_index=True)
+
+
+df.rename(columns = {'old_name':'new_name'}, inplace=True)
+
